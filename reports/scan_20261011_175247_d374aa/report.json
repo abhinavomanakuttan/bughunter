@@ -1,0 +1,52 @@
+{
+  "run_id": "scan_20261011_175247_d374aa",
+  "url": "http://localhost:8080",
+  "started_at": "2026-10-11T17:53:07.165818+00:00",
+  "finished_at": "2026-10-11T17:53:07.165822+00:00",
+  "duration_seconds": 4e-06,
+  "playwright_version": "",
+  "config": {
+    "browsers": [
+      "chromium"
+    ],
+    "max_depth": 3,
+    "headless": true,
+    "a11y": true,
+    "visual_diff": false
+  },
+  "summary": {
+    "test_count": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "pass_rate": 0.0,
+    "severity_breakdown": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 0,
+      "LOW": 0
+    },
+    "pages_crawled": 6,
+    "flows_inferred": 0
+  },
+  "accessibility": {
+    "wcag_score": 0.0,
+    "total_violations": 22,
+    "by_impact": {
+      "critical": 5,
+      "serious": 7,
+      "moderate": 10,
+      "minor": 0
+    }
+  },
+  "visual_diff": null,
+  "test_results": [],
+  "failures": [],
+  "report_files": {
+    "html": "reports\\scan_20261011_175247_d374aa\\report.html",
+    "json": "reports\\scan_20261011_175247_d374aa\\report.json",
+    "generated_tests": "reports\\scan_20261011_175247_d374aa\\generated_tests.py",
+    "har": "reports\\scan_20261011_175247_d374aa\\traffic.har",
+    "codegen_script": "reports\\scan_20261011_175247_d374aa\\codegen_script.py"
+  }
+}

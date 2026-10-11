@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Report — http://localhost:8080 — test_scan_debug</title>
+  <style>
+    :root {
+      --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424;
+      --border: #333; --text: #e0e0e0; --muted: #888;
+      --critical: #ff4444; --high: #ff8800; --medium: #ffcc00; --low: #44ff88;
+      --pass: #44bb77; --fail: #ff4444; --skip: #888888;
+      --accent: #4a9eff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* Header */
+    .header { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+    .header h1 { font-size: 24px; color: var(--accent); margin-bottom: 8px; }
+    .header-meta { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); font-size: 12px; }
+    .header-meta span strong { color: var(--text); }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .card h2 { font-size: 16px; color: var(--accent); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+    /* Summary Grid */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .summary-stat { background: var(--surface2); border-radius: 6px; padding: 16px; text-align: center; }
+    .summary-stat .value { font-size: 32px; font-weight: 700; }
+    .summary-stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-pass .value { color: var(--pass); }
+    .stat-fail .value { color: var(--fail); }
+    .stat-skip .value { color: var(--skip); }
+    .stat-score .value { color: var(--accent); }
+
+    /* Severity Badges */
+    .severity-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+    .severity-badge { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 13px; }
+    .badge-critical { background: rgba(255,68,68,0.15); border: 1px solid var(--critical); color: var(--critical); }
+    .badge-high { background: rgba(255,136,0,0.15); border: 1px solid var(--high); color: var(--high); }
+    .badge-medium { background: rgba(255,204,0,0.15); border: 1px solid var(--medium); color: var(--medium); }
+    .badge-low { background: rgba(68,255,136,0.15); border: 1px solid var(--low); color: var(--low); }
+    .badge-count { font-size: 20px; font-weight: 700; }
+
+    /* Pass Rate Donut */
+    .summary-top { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center; }
+    .donut-container { text-align: center; }
+    .donut-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 8px 12px; background: var(--surface2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* Status badges */
+    .status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .status-passed { background: rgba(68,187,119,0.15); color: var(--pass); }
+    .status-failed { background: rgba(255,68,68,0.15); color: var(--fail); }
+    .status-skipped { background: rgba(136,136,136,0.15); color: var(--skip); }
+    .severity-cell-critical { color: var(--critical); font-weight: 600; }
+    .severity-cell-high { color: var(--high); font-weight: 600; }
+    .severity-cell-medium { color: var(--medium); font-weight: 600; }
+    .severity-cell-low { color: var(--low); font-weight: 600; }
+
+    /* Code blocks */
+    pre { background: #0a0a0a; border: 1px solid var(--border); border-radius: 6px; padding: 16px; overflow-x: auto; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+    code { font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace; }
+
+    /* Error messages */
+    .error-text { color: var(--fail); font-size: 12px; font-family: monospace; max-height: 120px; overflow-y: auto; }
+    .repro-steps { margin: 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
+    .repro-steps li { margin-bottom: 2px; }
+
+    /* Accessibility */
+    .wcag-score { font-size: 48px; font-weight: 700; color: var(--accent); }
+    .wcag-label { color: var(--muted); font-size: 12px; }
+    .impact-critical { color: var(--critical); }
+    .impact-serious { color: var(--high); }
+    .impact-moderate { color: var(--medium); }
+    .impact-minor { color: var(--low); }
+
+    /* Visual diffs */
+    .visual-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .visual-card { text-align: center; }
+    .visual-card img { width: 100%; border: 1px solid var(--border); border-radius: 4px; max-height: 200px; object-fit: contain; }
+    .visual-card .visual-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .change-pct { font-weight: 700; color: var(--accent); }
+
+    /* Crawl map */
+    .crawl-map { font-family: monospace; font-size: 12px; line-height: 1.8; color: var(--muted); }
+    .crawl-url { color: var(--text); }
+    .crawl-error { color: var(--fail); }
+
+    /* Collapsible */
+    details summary { cursor: pointer; padding: 8px; background: var(--surface2); border-radius: 4px; color: var(--muted); font-size: 12px; }
+    details summary:hover { color: var(--text); }
+    details[open] summary { margin-bottom: 8px; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .summary-top { grid-template-columns: 1fr; }
+      .visual-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>🤖 AutonomousQA Report</h1>
+    <div class="header-meta">
+      <span><strong>URL:</strong> http://localhost:8080</span>
+      <span><strong>Run ID:</strong> test_scan_debug</span>
+      <span><strong>Started:</strong> 2026-10-11 17:43:15 UTC</span>
+      <span><strong>Duration:</strong> 0.0s</span>
+      <span><strong>Playwright:</strong> </span>
+      <span><strong>Browsers:</strong> chromium</span>
+      <span><strong>Crawl Depth:</strong> 3</span>
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY -->
+  <div class="card">
+    <h2>Executive Summary</h2>
+    <div class="summary-top">
+      <!-- Donut Chart (inline SVG) -->
+      <div class="donut-container">
+        
+        
+        
+        
+        
+        
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="40" fill="none" stroke="#333" stroke-width="12"/>
+          <circle cx="60" cy="60" r="40" fill="none" stroke="#44bb77" stroke-width="12"
+            stroke-dasharray="0.0 251.2"
+            stroke-dashoffset="62.8" transform="rotate(-90 60 60)"/>
+          <text x="60" y="55" text-anchor="middle" fill="#e0e0e0" font-size="16" font-weight="700">0%</text>
+          <text x="60" y="72" text-anchor="middle" fill="#888" font-size="9">pass rate</text>
+        </svg>
+        <div class="donut-label">0/0 tests passed</div>
+      </div>
+
+      <div>
+        <div class="summary-grid">
+          <div class="summary-stat stat-pass">
+            <div class="value">0</div>
+            <div class="label">Passed</div>
+          </div>
+          <div class="summary-stat stat-fail">
+            <div class="value">0</div>
+            <div class="label">Failed</div>
+          </div>
+          <div class="summary-stat stat-skip">
+            <div class="value">0</div>
+            <div class="label">Skipped</div>
+          </div>
+          <div class="summary-stat stat-score">
+            <div class="value">0</div>
+            <div class="label">Flows Found</div>
+          </div>
+          
+          <div class="summary-stat stat-score">
+            <div class="value">0</div>
+            <div class="label">WCAG Score</div>
+          </div>
+          
+          
+          <div class="summary-stat">
+            <div class="value" style="color: var(--accent)">6</div>
+            <div class="label">Pages Crawled</div>
+          </div>
+          
+        </div>
+
+        <!-- Severity Breakdown -->
+        <div class="severity-grid">
+          <div class="severity-badge badge-critical">
+            <span class="badge-count">0</span>
+            CRITICAL
+          </div>
+          <div class="severity-badge badge-high">
+            <span class="badge-count">0</span>
+            HIGH
+          </div>
+          <div class="severity-badge badge-medium">
+            <span class="badge-count">0</span>
+            MEDIUM
+          </div>
+          <div class="severity-badge badge-low">
+            <span class="badge-count">0</span>
+            LOW
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEST RESULTS -->
+  
+
+  <!-- GENERATED TEST FILE -->
+  
+
+  <!-- ACCESSIBILITY REPORT -->
+  
+  <div class="card">
+    <h2>Accessibility Report (WCAG 2.1 AA)</h2>
+    <div style="display: flex; align-items: center; gap: 32px; margin-bottom: 20px;">
+      <div>
+        <div class="wcag-score">0</div>
+        <div class="wcag-label">/ 100 WCAG Score</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="impact-critical">● Critical violations: 5 (−20 pts each)</span>
+        <span class="impact-serious">● Serious violations: 7 (−10 pts each)</span>
+        <span class="impact-moderate">● Moderate violations: 10 (−5 pts each)</span>
+        <span class="impact-minor">● Minor violations: 0 (−1 pt each)</span>
+      </div>
+    </div>
+
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Rule</th>
+          <th>Impact</th>
+          <th>Description</th>
+          <th>Page</th>
+          <th>Affected Elements</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        <tr>
+          <td><code>button-name</code></td>
+          <td><span class="impact-critical">CRITICAL</span></td>
+          <td>Ensures buttons have discernible text</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">button[onclick="addToCart(1)"]</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>color-contrast</code></td>
+          <td><span class="impact-serious">SERIOUS</span></td>
+          <td>Ensures the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">button[onclick="addToCart(2)"]</code>
+            
+            <code style="display: block; color: var(--muted);">button[onclick="addToCart(3)"]</code>
+            
+            <code style="display: block; color: var(--muted);">button[type="submit"]</code>
+            
+            
+            <span style="color: var(--muted)">+1 more</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>image-alt</code></td>
+          <td><span class="impact-critical">CRITICAL</span></td>
+          <td>Ensures <img> elements have alternate text or a role of none or presentation</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">.product-card:nth-child(2) > img</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>button-name</code></td>
+          <td><span class="impact-critical">CRITICAL</span></td>
+          <td>Ensures buttons have discernible text</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">button[onclick="addToCart(1)"]</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>color-contrast</code></td>
+          <td><span class="impact-serious">SERIOUS</span></td>
+          <td>Ensures the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">button[onclick="addToCart(2)"]</code>
+            
+            <code style="display: block; color: var(--muted);">button[onclick="addToCart(3)"]</code>
+            
+            <code style="display: block; color: var(--muted);">button[type="submit"]</code>
+            
+            
+            <span style="color: var(--muted)">+1 more</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>image-alt</code></td>
+          <td><span class="impact-critical">CRITICAL</span></td>
+          <td>Ensures <img> elements have alternate text or a role of none or presentation</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">.product-card:nth-child(2) > img</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>html-has-lang</code></td>
+          <td><span class="impact-serious">SERIOUS</span></td>
+          <td>Ensures every HTML document has a lang attribute</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/products</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>landmark-one-main</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures the document has a main landmark</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/products</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>region</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures all page content is contained by landmarks</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/products</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">h1</code>
+            
+            <code style="display: block; color: var(--muted);">p</code>
+            
+            <code style="display: block; color: var(--muted);">a</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>document-title</code></td>
+          <td><span class="impact-serious">SERIOUS</span></td>
+          <td>Ensures each HTML document contains a non-empty <title> element</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/about-us-this-page-does-not-exist</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>html-has-lang</code></td>
+          <td><span class="impact-serious">SERIOUS</span></td>
+          <td>Ensures every HTML document has a lang attribute</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/about-us-this-page-does-not-exist</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>landmark-one-main</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures the document has a main landmark</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/about-us-this-page-does-not-exist</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>page-has-heading-one</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensure that the page, or at least one of its frames contains a level-one heading</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/about-us-this-page-does-not-exist</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>region</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures all page content is contained by landmarks</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/about-us-this-page-does-not-exist</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">pre</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>image-alt</code></td>
+          <td><span class="impact-critical">CRITICAL</span></td>
+          <td>Ensures <img> elements have alternate text or a role of none or presentation</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/contact</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">img</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>landmark-one-main</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures the document has a main landmark</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/contact</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>region</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures all page content is contained by landmarks</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/contact</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">h1</code>
+            
+            <code style="display: block; color: var(--muted);">p</code>
+            
+            <code style="display: block; color: var(--muted);">img</code>
+            
+            
+            <span style="color: var(--muted)">+1 more</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>document-title</code></td>
+          <td><span class="impact-serious">SERIOUS</span></td>
+          <td>Ensures each HTML document contains a non-empty <title> element</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/privacy</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>html-has-lang</code></td>
+          <td><span class="impact-serious">SERIOUS</span></td>
+          <td>Ensures every HTML document has a lang attribute</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/privacy</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>landmark-one-main</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures the document has a main landmark</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/privacy</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>page-has-heading-one</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensure that the page, or at least one of its frames contains a level-one heading</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/privacy</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">html</code>
+            
+            
+          </td>
+        </tr>
+        
+        <tr>
+          <td><code>region</code></td>
+          <td><span class="impact-moderate">MODERATE</span></td>
+          <td>Ensures all page content is contained by landmarks</td>
+          <td style="color: var(--muted); font-size: 12px;">http://localhost:8080/privacy</td>
+          <td style="font-size: 12px;">
+            
+            <code style="display: block; color: var(--muted);">pre</code>
+            
+            
+          </td>
+        </tr>
+        
+      </tbody>
+    </table>
+    
+  </div>
+  
+
+  <!-- VISUAL DIFFS -->
+  
+
+  <!-- CRAWL MAP -->
+  
+  <div class="card">
+    <h2>Crawl Map</h2>
+    <div class="crawl-map">
+      
+      <div>
+        
+        
+        <span class="crawl-url">
+          http://localhost:8080
+          <span style="color: var(--muted)"> — Bug-Ridden Demo Store</span>
+          
+        </span>
+      </div>
+      
+      <div>
+        │  
+        ├─ 
+        <span class="crawl-url">
+          http://localhost:8080/
+          <span style="color: var(--muted)"> — Bug-Ridden Demo Store</span>
+          
+        </span>
+      </div>
+      
+      <div>
+        │  
+        ├─ 
+        <span class="crawl-url">
+          http://localhost:8080/products
+          <span style="color: var(--muted)"> — Products</span>
+          
+        </span>
+      </div>
+      
+      <div>
+        │  
+        ├─ 
+        <span class="crawl-url">
+          http://localhost:8080/about-us-this-page-does-not-exist
+          
+          
+        </span>
+      </div>
+      
+      <div>
+        │  
+        ├─ 
+        <span class="crawl-url">
+          http://localhost:8080/contact
+          <span style="color: var(--muted)"> — Contact — Demo Store</span>
+          
+        </span>
+      </div>
+      
+      <div>
+        │  
+        ├─ 
+        <span class="crawl-url">
+          http://localhost:8080/privacy
+          
+          
+        </span>
+      </div>
+      
+    </div>
+    
+  </div>
+  
+
+  <!-- DEBUG LOGS -->
+  
+
+  <div style="text-align: center; color: var(--muted); font-size: 12px; margin-top: 24px; padding-bottom: 24px;">
+    Generated by AutonomousQA Agent • test_scan_debug
+  </div>
+
+</div>
+</body>
+</html>
